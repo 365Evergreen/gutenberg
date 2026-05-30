@@ -7,7 +7,10 @@ import clsx from 'clsx';
  * WordPress dependencies
  */
 import { __, isRTL } from '@wordpress/i18n';
-import { ToggleControl, __experimentalToolsPanelItem as ToolsPanelItem } from '@wordpress/components';
+import {
+	ToggleControl,
+	__experimentalToolsPanelItem as ToolsPanelItem,
+} from '@wordpress/components';
 import {
 	InspectorControls,
 	RichText,

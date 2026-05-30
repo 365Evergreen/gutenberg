@@ -2,11 +2,7 @@
  * WordPress dependencies
  */
 import { __, _x } from '@wordpress/i18n';
-import {
-	Notice,
-	SelectControl,
-	ToolbarButton,
-} from '@wordpress/components';
+import { Notice, SelectControl, ToolbarButton } from '@wordpress/components';
 import {
 	__experimentalFontAppearanceControl as FontAppearanceControl,
 	URLInputButton,
@@ -14,7 +10,6 @@ import {
 	BlockControls,
 } from '@wordpress/block-editor';
 import { useMemo } from '@wordpress/element';
-import { create, applyFormat, removeFormat, toHTMLString } from '@wordpress/rich-text';
 import { formatLTR } from '@wordpress/icons';
 
 /**
@@ -22,80 +17,54 @@ import { formatLTR } from '@wordpress/icons';
  */
 import InlineControls from '../utils/inline-controls';
 
-const LINK_FORMAT = 'core/link';
-
-function getLinkRanges( value ) {
-	const ranges = [];
-	let rangeStart = null;
-
-	for ( let index = 0; index < value.text.length; index++ ) {
-		const hasLink = value.formats?.[ index ]?.some(
-			( format ) => format.type === LINK_FORMAT
-		);
-
-		if ( hasLink && rangeStart === null ) {
-			rangeStart = index;
-		} else if ( ! hasLink && rangeStart !== null ) {
-			ranges.push( [ rangeStart, index ] );
-			rangeStart = null;
-		}
-	}
-
-	if ( rangeStart !== null ) {
-		ranges.push( [ rangeStart, value.text.length ] );
-	}
-
-	return ranges;
+function getLinkElements( content ) {
+	const container = document.createElement( 'div' );
+	container.innerHTML = content || '';
+	return [ container, [ ...container.querySelectorAll( 'a[href]' ) ] ];
 }
 
 export function getParagraphLinkValue( content ) {
-	const richTextValue = create( { html: content || '' } );
-	const ranges = getLinkRanges( richTextValue );
+	const [ , links ] = getLinkElements( content );
 
-	if ( ranges.length !== 1 ) {
+	if ( links.length !== 1 ) {
 		return '';
 	}
 
-	const [ start ] = ranges[ 0 ];
-	const linkFormat = richTextValue.formats?.[ start ]?.find(
-		( format ) => format.type === LINK_FORMAT
-	);
-
-	return linkFormat?.attributes?.url || '';
+	return links[ 0 ].getAttribute( 'href' ) || '';
 }
 
 export function applyParagraphLinkValue( content, url ) {
-	const richTextValue = create( { html: content || '' } );
-	const ranges = getLinkRanges( richTextValue );
+	const [ container, links ] = getLinkElements( content );
 
-	if ( ! richTextValue.text.length || ranges.length > 1 ) {
+	if ( links.length > 1 ) {
+		return container.innerHTML;
+	}
+
+	if ( links.length === 1 ) {
+		const [ linkElement ] = links;
+		if ( url ) {
+			linkElement.setAttribute( 'href', url );
+		} else {
+			linkElement.replaceWith(
+				...Array.from( linkElement.childNodes ).map( ( node ) =>
+					node.cloneNode( true )
+				)
+			);
+		}
+		return container.innerHTML;
+	}
+
+	if ( ! url || ! container.textContent ) {
 		return content;
 	}
 
-	let nextValue = richTextValue;
-
-	if ( ranges.length === 1 ) {
-		const [ start, end ] = ranges[ 0 ];
-		nextValue = removeFormat( nextValue, LINK_FORMAT, start, end );
-
-		if ( url ) {
-			nextValue = applyFormat(
-				nextValue,
-				{ type: LINK_FORMAT, attributes: { url } },
-				start,
-				end
-			);
-		}
-	} else if ( url ) {
-		nextValue = applyFormat(
-			nextValue,
-			{ type: LINK_FORMAT, attributes: { url } },
-			0,
-			nextValue.text.length
-		);
+	const linkElement = document.createElement( 'a' );
+	linkElement.setAttribute( 'href', url );
+	while ( container.firstChild ) {
+		linkElement.append( container.firstChild );
 	}
-
-	return toHTMLString( { value: nextValue } );
+	container.append( linkElement );
+	return container.innerHTML;
 }
 
 export function ParagraphRTLControl( { direction, setDirection, isRTL } ) {
@@ -149,8 +118,8 @@ export function ParagraphInlineControls( {
 	);
 	const typography = attributes.style?.typography || {};
 	const currentFontSizeSlug = getFontSizeSlug( typography.fontSize );
-	const hasMultipleLinks =
-		getLinkRanges( create( { html: attributes.content || '' } ) ).length > 1;
+	const [ , links ] = getLinkElements( attributes.content );
+	const hasMultipleLinks = links.length > 1;
 	const fontSizeOptions = useMemo(
 		() => [
 			{ label: __( 'Default' ), value: '' },
@@ -198,7 +167,6 @@ export function ParagraphInlineControls( {
 						}
 					} }
 					__next40pxDefaultSize
-					__nextHasNoMarginBottom
 				/>
 				{ fontSizeControlValue === '__custom__' && (
 					<SelectControl
@@ -220,7 +188,6 @@ export function ParagraphInlineControls( {
 							} )
 						}
 						__next40pxDefaultSize
-						__nextHasNoMarginBottom
 					/>
 				) }
 				{ hasFontWeightControl && (
