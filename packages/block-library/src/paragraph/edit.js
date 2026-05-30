@@ -6,14 +6,9 @@ import clsx from 'clsx';
 /**
  * WordPress dependencies
  */
-import { __, _x, isRTL } from '@wordpress/i18n';
+import { __, isRTL } from '@wordpress/i18n';
+import { ToggleControl, __experimentalToolsPanelItem as ToolsPanelItem } from '@wordpress/components';
 import {
-	ToolbarButton,
-	ToggleControl,
-	__experimentalToolsPanelItem as ToolsPanelItem,
-} from '@wordpress/components';
-import {
-	BlockControls,
 	InspectorControls,
 	RichText,
 	useBlockProps,
@@ -23,28 +18,13 @@ import {
 } from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
 import { getBlockSupport } from '@wordpress/blocks';
-import { formatLTR } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
 import { useOnEnter } from './use-enter';
 import useDeprecatedAlign from './deprecated-attributes';
 import { unlock } from '../lock-unlock';
-
-function ParagraphRTLControl( { direction, setDirection } ) {
-	return (
-		isRTL() && (
-			<ToolbarButton
-				icon={ formatLTR }
-				title={ _x( 'Left to right', 'editor button' ) }
-				isActive={ direction === 'ltr' }
-				onClick={ () => {
-					setDirection( direction === 'ltr' ? undefined : 'ltr' );
-				} }
-			/>
-		)
-	);
-}
+import { ParagraphInlineControls } from './inline-controls';
 
 function hasDropCapDisabled( align ) {
 	return align === ( isRTL() ? 'left' : 'right' ) || align === 'center';
@@ -135,16 +115,13 @@ function ParagraphBlock( {
 	return (
 		<>
 			{ blockEditingMode === 'default' && (
-				<BlockControls group="block">
-					<ParagraphRTLControl
-						direction={ direction }
-						setDirection={ ( newDirection ) =>
-							setAttributes( { direction: newDirection } )
-						}
-					/>
-				</BlockControls>
+				<ParagraphInlineControls
+					attributes={ attributes }
+					setAttributes={ setAttributes }
+					isRTL={ isRTL() }
+				/>
 			) }
-			{ isSingleSelected && (
+			{ isSingleSelected && blockEditingMode !== 'default' && (
 				<DropCapControl
 					name={ name }
 					clientId={ clientId }
